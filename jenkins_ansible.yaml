@@ -1,0 +1,65 @@
+- hosts: localhost
+  become: yes
+  connection: local
+  collections:
+    - /root/.ansible/collections/ansible_collections/
+  tasks:
+    - name: start a container
+      community.docker.docker_container:
+        name: abc-application
+        image: abdulpurduedevops/abctechnologiestest
+        state: started
+        ports:
+          - 1234:8080
+      register: out
+    - debug:
+        var: out
+    - name: Create a Deployment
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: my-deployment
+            namespace: default
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app: my-app
+            template:
+              metadata:
+                labels:
+                  app: my-app
+              spec:
+                containers:
+                - name: my-container
+                  image: abdulpurduedevops/abctechnologiestest:latest
+                  ports:
+                  - containerPort: 80
+        namespace: default
+      register: out
+    - debug:
+        var: out
+    - name: Create a Service
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: my-service
+            namespace: default
+          spec:
+            type: NodePort
+            selector:
+              app: my-app
+            ports:
+            - name: http
+              port: 80
+              targetPort: 8080
+        namespace: default
+      register: out
+    - debug:
+        var: out
